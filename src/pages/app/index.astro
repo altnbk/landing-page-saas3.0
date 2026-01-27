@@ -1,0 +1,351 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+---
+
+<AppLayout title="Create Landing Page">
+  <div class="page-header">
+    <h1>Create a Landing Page</h1>
+    <p>Fill in the details below, preview your page, and deploy it instantly</p>
+  </div>
+
+  <div class="create-layout">
+    <div class="form-section card">
+      <h2>Page Details</h2>
+
+      <div id="alert-container"></div>
+
+      <form id="create-form">
+        <div class="form-group">
+          <label for="title" class="form-label">Title</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            class="form-input"
+            placeholder="Welcome to My Product"
+            maxlength="100"
+            required
+          />
+          <small class="form-hint">Max 100 characters</small>
+        </div>
+
+        <div class="form-group">
+          <label for="subtitle" class="form-label">Subtitle</label>
+          <textarea
+            id="subtitle"
+            name="subtitle"
+            class="form-input"
+            placeholder="The best solution for your needs. Start your journey today."
+            maxlength="300"
+            rows="3"
+            required
+          ></textarea>
+          <small class="form-hint">Max 300 characters</small>
+        </div>
+
+        <div class="form-group">
+          <label for="cta" class="form-label">Call to Action</label>
+          <input
+            type="text"
+            id="cta"
+            name="cta"
+            class="form-input"
+            placeholder="Get Started"
+            maxlength="50"
+            required
+          />
+          <small class="form-hint">Max 50 characters - the button text</small>
+        </div>
+
+        <div class="form-group">
+          <label for="themeColor" class="form-label">Theme Color (optional)</label>
+          <div class="color-input-wrapper">
+            <input
+              type="color"
+              id="themeColor"
+              name="themeColor"
+              class="color-input"
+              value="#667eea"
+            />
+            <input
+              type="text"
+              id="themeColorText"
+              class="form-input color-text"
+              value="#667eea"
+              pattern="^#[0-9A-Fa-f]{6}$"
+              placeholder="#667eea"
+            />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="preview-btn" class="btn btn-secondary">
+            Update Preview
+          </button>
+          <button type="submit" id="deploy-btn" class="btn btn-primary">
+            Deploy to Cloudflare
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="preview-section">
+      <h2>Live Preview</h2>
+      <div class="preview-container">
+        <iframe id="preview-frame" title="Landing Page Preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('create-form') as HTMLFormElement;
+    const previewBtn = document.getElementById('preview-btn') as HTMLButtonElement;
+    const deployBtn = document.getElementById('deploy-btn') as HTMLButtonElement;
+    const alertContainer = document.getElementById('alert-container') as HTMLDivElement;
+    const previewFrame = document.getElementById('preview-frame') as HTMLIFrameElement;
+
+    const titleInput = document.getElementById('title') as HTMLInputElement;
+    const subtitleInput = document.getElementById('subtitle') as HTMLTextAreaElement;
+    const ctaInput = document.getElementById('cta') as HTMLInputElement;
+    const colorInput = document.getElementById('themeColor') as HTMLInputElement;
+    const colorTextInput = document.getElementById('themeColorText') as HTMLInputElement;
+
+    function showAlert(message: string, type: 'error' | 'success') {
+      alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearAlert() {
+      alertContainer.innerHTML = '';
+    }
+
+    function escapeHtml(text: string): string {
+      const map: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    function adjustColor(hex: string, amount: number): string {
+      hex = hex.replace('#', '');
+      let r = parseInt(hex.substring(0, 2), 16);
+      let g = parseInt(hex.substring(2, 4), 16);
+      let b = parseInt(hex.substring(4, 6), 16);
+      r = Math.max(0, Math.min(255, r + amount));
+      g = Math.max(0, Math.min(255, g + amount));
+      b = Math.max(0, Math.min(255, b + amount));
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+
+    function generatePreviewHTML(): string {
+      const title = titleInput.value || 'Your Title';
+      const subtitle = subtitleInput.value || 'Your subtitle goes here...';
+      const cta = ctaInput.value || 'Get Started';
+      const color = colorInput.value || '#667eea';
+
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, ${escapeHtml(color)} 0%, ${adjustColor(color, -30)} 100%);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .container { max-width: 600px; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.75rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); line-height: 1.2; }
+    p { font-size: 0.95rem; margin-bottom: 1.25rem; opacity: 0.9; line-height: 1.5; }
+    .cta-button {
+      display: inline-block;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: ${escapeHtml(color)};
+      background: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(subtitle)}</p>
+    <a href="#" class="cta-button">${escapeHtml(cta)}</a>
+  </div>
+</body>
+</html>`;
+    }
+
+    function updatePreview() {
+      const html = generatePreviewHTML();
+      previewFrame.srcdoc = html;
+    }
+
+    // Sync color inputs
+    colorInput.addEventListener('input', () => {
+      colorTextInput.value = colorInput.value;
+      updatePreview();
+    });
+
+    colorTextInput.addEventListener('input', () => {
+      const value = colorTextInput.value;
+      if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        colorInput.value = value;
+        updatePreview();
+      }
+    });
+
+    // Initial preview
+    updatePreview();
+
+    // Update preview on input
+    [titleInput, subtitleInput, ctaInput].forEach(input => {
+      input.addEventListener('input', updatePreview);
+    });
+
+    previewBtn.addEventListener('click', updatePreview);
+
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert();
+
+      const title = titleInput.value.trim();
+      const subtitle = subtitleInput.value.trim();
+      const cta = ctaInput.value.trim();
+      const themeColor = colorInput.value;
+
+      if (!title || !subtitle || !cta) {
+        showAlert('Please fill in all required fields', 'error');
+        return;
+      }
+
+      deployBtn.disabled = true;
+      deployBtn.textContent = 'Deploying...';
+
+      try {
+        const response = await fetch('/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, subtitle, cta, themeColor }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Deployment failed');
+        }
+
+        showAlert(
+          `Deployed successfully! <a href="${data.url}" target="_blank" rel="noopener">View your page &rarr;</a>`,
+          'success'
+        );
+
+        // Clear form
+        form.reset();
+        colorInput.value = '#667eea';
+        colorTextInput.value = '#667eea';
+        updatePreview();
+      } catch (err) {
+        showAlert(err instanceof Error ? err.message : 'Deployment failed', 'error');
+      } finally {
+        deployBtn.disabled = false;
+        deployBtn.textContent = 'Deploy to Cloudflare';
+      }
+    });
+  </script>
+</AppLayout>
+
+<style>
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.75rem;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-header p {
+    color: #718096;
+  }
+
+  .create-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .create-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-section h2,
+  .preview-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+    color: #2d3748;
+  }
+
+  .color-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .color-input {
+    width: 50px;
+    height: 44px;
+    padding: 2px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .color-text {
+    flex: 1;
+    font-family: monospace;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .preview-container {
+    background: #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+  }
+
+  #preview-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+</style>

@@ -1,0 +1,355 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { createServerClient, type Deployment } from '../../lib/supabase';
+
+// Fetch deployments for the current user
+const supabase = createServerClient(Astro.cookies);
+const { data: deployments, error } = await supabase
+  .from('deployments')
+  .select('*')
+  .order('created_at', { ascending: false });
+---
+
+<AppLayout title="Deployment History">
+  <div class="page-header">
+    <h1>Deployment History</h1>
+    <p>View and manage your deployed landing pages</p>
+  </div>
+
+  <div id="alert-container"></div>
+
+  {error ? (
+    <div class="alert alert-error">
+      Failed to load deployments: {error.message}
+    </div>
+  ) : deployments && deployments.length > 0 ? (
+    <div class="deployments-grid" id="deployments-grid">
+      {(deployments as Deployment[]).map((deployment) => (
+        <div class="deployment-card card" data-id={deployment.id}>
+          <div class="deployment-header">
+            <h3>{deployment.title}</h3>
+            <span
+              class="deployment-color"
+              style={`background-color: ${deployment.theme_color || '#667eea'}`}
+              title={deployment.theme_color || '#667eea'}
+            ></span>
+          </div>
+          <p class="deployment-subtitle">{deployment.subtitle}</p>
+          <div class="deployment-cta">
+            <span class="cta-label">CTA:</span> {deployment.cta}
+          </div>
+          <div class="deployment-meta">
+            <span class="deployment-date">
+              {new Date(deployment.created_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+          <div class="deployment-actions">
+            <a href={deployment.url} target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+              View Page
+            </a>
+            <button
+              class="btn btn-danger btn-sm delete-btn"
+              data-deployment-id={deployment.id}
+              data-deployment-title={deployment.title}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div class="empty-state card">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+      </div>
+      <h3>No deployments yet</h3>
+      <p>Create your first landing page to see it here.</p>
+      <a href="/app" class="btn btn-primary">Create Landing Page</a>
+    </div>
+  )}
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal" style="display: none;">
+    <div class="modal-content card">
+      <h3>Delete Deployment</h3>
+      <p>Are you sure you want to delete "<span id="delete-title"></span>"?</p>
+      <p class="modal-warning">This will permanently remove the landing page from Cloudflare.</p>
+      <div class="modal-actions">
+        <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
+        <button id="confirm-delete" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const alertContainer = document.getElementById('alert-container') as HTMLDivElement;
+    const modal = document.getElementById('delete-modal') as HTMLDivElement;
+    const deleteTitle = document.getElementById('delete-title') as HTMLSpanElement;
+    const cancelBtn = document.getElementById('cancel-delete') as HTMLButtonElement;
+    const confirmBtn = document.getElementById('confirm-delete') as HTMLButtonElement;
+
+    let pendingDeleteId: string | null = null;
+
+    function showAlert(message: string, type: 'error' | 'success') {
+      alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      setTimeout(() => {
+        alertContainer.innerHTML = '';
+      }, 5000);
+    }
+
+    function openModal(id: string, title: string) {
+      pendingDeleteId = id;
+      deleteTitle.textContent = title;
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      pendingDeleteId = null;
+      modal.style.display = 'none';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Delete';
+    }
+
+    // Setup delete buttons
+    document.querySelectorAll('.delete-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-deployment-id');
+        const title = btn.getAttribute('data-deployment-title');
+        if (id && title) {
+          openModal(id, title);
+        }
+      });
+    });
+
+    cancelBtn?.addEventListener('click', closeModal);
+
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    // Handle keyboard escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal?.style.display === 'flex') {
+        closeModal();
+      }
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+      if (!pendingDeleteId) return;
+
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Deleting...';
+
+      try {
+        const response = await fetch('/api/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deploymentId: pendingDeleteId }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Delete failed');
+        }
+
+        // Remove card from DOM
+        const card = document.querySelector(`[data-id="${pendingDeleteId}"]`);
+        if (card) {
+          card.remove();
+        }
+
+        showAlert('Deployment deleted successfully', 'success');
+
+        // Check if no more deployments
+        const remainingCards = document.querySelectorAll('.deployment-card');
+        if (remainingCards.length === 0) {
+          const grid = document.getElementById('deployments-grid');
+          if (grid) {
+            grid.outerHTML = `
+              <div class="empty-state card">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                  </svg>
+                </div>
+                <h3>No deployments yet</h3>
+                <p>Create your first landing page to see it here.</p>
+                <a href="/app" class="btn btn-primary">Create Landing Page</a>
+              </div>
+            `;
+          }
+        }
+      } catch (err) {
+        showAlert(err instanceof Error ? err.message : 'Delete failed', 'error');
+      } finally {
+        closeModal();
+      }
+    });
+  </script>
+</AppLayout>
+
+<style>
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.75rem;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-header p {
+    color: #718096;
+  }
+
+  .deployments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .deployment-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .deployment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .deployment-header h3 {
+    font-size: 1.125rem;
+    color: #2d3748;
+    margin: 0;
+    flex: 1;
+    word-break: break-word;
+  }
+
+  .deployment-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid rgba(0,0,0,0.1);
+  }
+
+  .deployment-subtitle {
+    color: #718096;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    flex-grow: 1;
+    line-height: 1.5;
+  }
+
+  .deployment-cta {
+    font-size: 0.8rem;
+    color: #4a5568;
+    margin-bottom: 0.75rem;
+    background: #f7fafc;
+    padding: 0.5rem;
+    border-radius: 4px;
+  }
+
+  .cta-label {
+    font-weight: 600;
+    color: #667eea;
+  }
+
+  .deployment-meta {
+    margin-bottom: 1rem;
+  }
+
+  .deployment-date {
+    font-size: 0.75rem;
+    color: #a0aec0;
+  }
+
+  .deployment-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .empty-icon {
+    color: #cbd5e0;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state h3 {
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+  }
+
+  .empty-state p {
+    color: #718096;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Modal styles */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  .modal-content {
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .modal-content h3 {
+    color: #2d3748;
+    margin-bottom: 1rem;
+  }
+
+  .modal-warning {
+    font-size: 0.875rem;
+    color: #e53e3e;
+    margin: 1rem 0;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+</style>
