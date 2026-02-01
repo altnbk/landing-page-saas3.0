@@ -1,0 +1,160 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getUser } from '../lib/supabase';
+
+// Redirect to app if already logged in
+const user = await getUser(Astro.cookies);
+if (user) {
+  return Astro.redirect('/app');
+}
+---
+
+<Layout title="Landing Page Generator - Create Beautiful Pages in Seconds">
+  <div class="hero">
+    <div class="hero-content">
+      <h1>Create Landing Pages<br />in Seconds</h1>
+      <p class="hero-subtitle">
+        Build beautiful, fast-loading landing pages and deploy them instantly to Cloudflare's global network. No coding required.
+      </p>
+      <div class="hero-cta">
+        <a href="/login" class="btn btn-primary btn-lg">Get Started Free</a>
+      </div>
+      <p class="hero-note">No credit card required</p>
+    </div>
+  </div>
+
+  <section class="features">
+    <div class="features-container">
+      <div class="feature">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </div>
+        <h3>Simple Editor</h3>
+        <p>Just fill in your title, subtitle, and call-to-action. Preview your page in real-time.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 16 12 12 8 16"></polyline>
+            <line x1="12" y1="12" x2="12" y2="21"></line>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+            <polyline points="16 16 12 12 8 16"></polyline>
+          </svg>
+        </div>
+        <h3>Instant Deploy</h3>
+        <p>One-click deployment to Cloudflare Pages. Your page goes live in seconds.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <h3>Manage History</h3>
+        <p>View all your deployments in one place. Delete pages you no longer need.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Built with Astro, Supabase, and Cloudflare</p>
+  </footer>
+</Layout>
+
+<style>
+  .hero {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .hero-content {
+    max-width: 700px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    line-height: 1.1;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .hero-subtitle {
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    opacity: 0.9;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+
+  .hero-cta {
+    margin-bottom: 1rem;
+  }
+
+  .btn-lg {
+    padding: 16px 40px;
+    font-size: 1.2rem;
+  }
+
+  .hero-note {
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
+
+  .features {
+    padding: 5rem 2rem;
+    background: white;
+  }
+
+  .features-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 3rem;
+  }
+
+  .feature {
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .feature-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: white;
+  }
+
+  .feature h3 {
+    font-size: 1.3rem;
+    margin-bottom: 0.75rem;
+    color: #2d3748;
+  }
+
+  .feature p {
+    color: #718096;
+    line-height: 1.6;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    background: #f7fafc;
+    color: #718096;
+  }
+</style>
