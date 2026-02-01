@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createBrowserClient } from '../../../lib/supabase';
+import { createAuthClient } from '../../../lib/supabase';
 
 interface LoginRequest {
   email: string;
@@ -29,7 +29,8 @@ export const POST: APIRoute = async ({ request }) => {
     // Get the origin for redirect URL
     const origin = new URL(request.url).origin;
 
-    const supabase = createBrowserClient();
+    // Use PKCE-enabled auth client
+    const supabase = createAuthClient();
 
     const { error } = await supabase.auth.signInWithOtp({
       email,

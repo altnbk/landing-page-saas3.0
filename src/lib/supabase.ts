@@ -28,12 +28,34 @@ const cookieOptions = {
 };
 
 /**
- * Create a Supabase client for browser-side usage
+ * Create a Supabase client for browser-side usage (with PKCE flow)
  */
 export function createBrowserClient() {
   return createClient(
     import.meta.env.SUPABASE_URL,
-    import.meta.env.SUPABASE_ANON_KEY
+    import.meta.env.SUPABASE_ANON_KEY,
+    {
+      auth: {
+        flowType: 'pkce',
+      },
+    }
+  );
+}
+
+/**
+ * Create a Supabase client for auth operations (PKCE flow, server-side)
+ */
+export function createAuthClient() {
+  return createClient(
+    import.meta.env.SUPABASE_URL,
+    import.meta.env.SUPABASE_ANON_KEY,
+    {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
   );
 }
 
